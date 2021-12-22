@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+    integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+
+  <title>Live Streaming Demonstration</title>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8  offset-lg-2">
+        <h3 class="mt-5">Live Streaming</h3>
+        <h5 id='data-fps'>fps: <span>N/A</span></h5>
+        <h5 id='data-avg'>avg fps: <span>N/A</span></h5>
+        <h5 id='data-min'>min fps: <span>N/A</span></h5>
+        <h5 id='data-max'>max fps: <span>N/A</span></h5>
+        <img src="{{ url_for('video_feed') }}" width="100%">
+      </div>
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+    integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script>
+    setInterval(() => {
+      fetch("{{ url_for ('get_analytics') }}")
+        .then(r => r.json())
+        .then(data => {
+          $('#data-fps span').text(data.fps);
+          $('#data-avg span').text(data.avg);
+          $('#data-min span').text(data.min);
+          $('#data-max span').text(data.max);
+        });
+    }, 1000)
+  </script>
+</body>
+
+</html>
