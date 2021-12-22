@@ -19,7 +19,7 @@
       <div class="col-lg-8  offset-lg-2">
         <h3 class="mt-5">Live Streaming</h3>
         <label for='models-select'>Choose the model:</label>
-        <select id='models-select'>
+	<select id='models-select' selected='{{ current_model }}'>
         {% for  _type in models %}
           <option for='{{_type}}'>{{_type}}</option>
         {% endfor %}
@@ -28,6 +28,7 @@
         <h5 id='data-avg'>avg fps: <span>N/A</span></h5>
         <h5 id='data-min'>min fps: <span>N/A</span></h5>
         <h5 id='data-max'>max fps: <span>N/A</span></h5>
+        <h5 id='data-delay'>delay: <span>N/A</span> ms</h5>
         <img src="{{ url_for('video_feed') }}" width="100%">
       </div>
     </div>
@@ -40,6 +41,7 @@
     const dataAvgSpan = $('#data-avg span');
     const dataMinSpan = $('#data-min span');
     const dataMaxSpan = $('#data-max span');
+    const dataDelay = $('#data-delay span');
     setInterval(() => {
       fetch("{{ url_for ('get_analytics') }}")
         .then(r => r.json())
@@ -48,8 +50,9 @@
           dataAvgSpan.text(data.avg);
           dataMinSpan.text(data.min);
           dataMaxSpan.text(data.max);
+          dataDelay.text(data.delay);
         });
-    }, 1000)
+    }, 5000);
 
     $('#models-select').change(function() {
       const jq = $(this);
