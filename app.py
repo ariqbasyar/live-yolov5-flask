@@ -20,10 +20,10 @@ app = Flask(__name__)
 
 weights = {
     'none': None,
-    'yolov5s': 'yolov5s',
-    'yolov5m': 'yolov5m',
-    'yolov5l': 'yolov5l',
-    'yolov5x': 'yolov5x',
+    'yolov5s': 'yolov5s.pt',
+    'yolov5m': 'yolov5m.pt',
+    'yolov5l': 'yolov5l.pt',
+    'yolov5x': 'yolov5x.pt',
 }
 
 model_key = 'none'
@@ -85,7 +85,7 @@ def video_feed():
 @app.route('/')
 def index():
     """Video streaming home page."""
-    return render_template('index.html')
+    return render_template('index.html', models=weights.keys())
 
 
 @app.route('/analytics')
@@ -109,7 +109,7 @@ def change_model():
         return jsonify(error='Invalid Model Key'), 403
     model_key = _type
     model_changed = True
-    return jsonify(result=200)
+    return jsonify(result='OK')
 
 def load_models(device):
     for key,val in weights.items():
