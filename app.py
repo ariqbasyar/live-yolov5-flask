@@ -1,22 +1,46 @@
-from datetime import datetime
-from flask import Flask, render_template, Response
+import json
+from os import error
+import re
 import cv2
+
+from pathlib import Path
+from datetime import datetime
+from flask import Flask, render_template, Response, request, jsonify
+from models.experimental import attempt_load
+from model import get_device, box_label, detect, preprocess
+from utils.general import methods
+
+FILE = Path(__file__).resolve()
+ROOT = FILE.parent
+WEIGHTS = ROOT / 'weights'
+
+device = get_device()
 
 app = Flask(__name__)
 
-# video = cv2.VideoCapture('rtsp://freja.hiof.no:1935/rtplive/_definst_/hessdalen03.stream')  # use 0 for web camera
-#  for cctv camera use rtsp://username:password@ip_address:554/user=username_password='password'_channel=channel_number_stream=0.sdp' instead of camera
-# for local webcam use cv2.VideoCapture(0)
+weights = {
+    'none': None,
+    'yolov5s': 'yolov5s',
+    'yolov5m': 'yolov5m',
+    'yolov5l': 'yolov5l',
+    'yolov5x': 'yolov5x',
+}
+
+model_key = 'none'
+model = weights[model_key]
+model_changed = False
+
 cnt = 0
 fps = 0
 last_fps = 0
 avg_fps = 0
 min_fps = 999
 max_fps = 0
-a = datetime.now()
+start_time = datetime.now()
 
 def gen_frames():  # generate frame by frame from camera
-    global fps, cnt, avg_fps, min_fps, max_fps, a, last_fps
+    global fps, cnt, avg_fps, min_fps, max_fps, start_time, last_fps,\
+        model, model_changed
     video = cv2.VideoCapture(0)
     while True:
         # Capture frame-by-frame
@@ -26,20 +50,29 @@ def gen_frames():  # generate frame by frame from camera
             print(frame)
             break
 
-        ret, buffer = cv2.imencode('.jpg', frame)
-        frame = buffer.tobytes()
+        preprocessed = preprocess(frame, device)
+        if model_changed:
+            model = weights[model_key]
+            model_changed = False
+        if model is not None:
+            pred = detect(model,preprocessed)
+            data = box_label(pred, frame)
+        else:
+            data = frame
+        ret, buffer = cv2.imencode('.jpg', data)
+        bytes_frame = buffer.tobytes()
         # concat frame one by one and show result
         yield (b'--frame\r\n'
-                b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                b'Content-Type: image/jpeg\r\n\r\n' + bytes_frame + b'\r\n')
         fps += 1
-        if (datetime.now() - a).seconds >= 1:
+        if (datetime.now() - start_time).seconds >= 1:
             last_fps = fps
             avg_fps = (avg_fps * cnt + fps) / (cnt + 1)
             cnt += 1
             max_fps = max(max_fps, fps)
             min_fps = min(min_fps, fps)
             fps = 0
-            a = datetime.now()
+            start_time = datetime.now()
 
 
 @app.route('/video_feed')
@@ -64,5 +97,26 @@ def get_analytics():
         'max': max_fps,
     }
 
+@app.errorhandler(403)
+@app.route('/change-model', methods=['POST'])
+def change_model():
+    global model_key, model_changed
+    data = request.get_json()
+    if data is None:
+        return jsonify(error='No json were given'), 403
+    _type = data.get('modelType')
+    if _type not in weights.keys():
+        return jsonify(error='Invalid Model Key'), 403
+    model_key = _type
+    model_changed = True
+    return jsonify(result=200)
+
+def load_models(device):
+    for key,val in weights.items():
+        if val is None: continue
+        m = attempt_load(WEIGHTS / val, map_location=device)
+        weights[key] = m
+
 if __name__ == '__main__':
+    load_models(device)
     app.run(debug=True, host='0.0.0.0')
